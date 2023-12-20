@@ -12,40 +12,8 @@ app.use(express.json());
 app.use(cors());
 
 // Server API endpoint for handling orders
-const serverApiUrl = "YOUR_SERVER_API_URL";
 const webAppUrl = "https://magnificent-speculoos-ca08a4.netlify.app";
 // Cake options with descriptions and picture links
-const cakes = [
-  {
-    name: "Шоколадный Лазурь",
-    description: "Много крема и шоколада!!!",
-    price: 25000,
-    pictureLink:
-      "https://unsplash.com/photos/white-cake-with-chocolate-syrup-on-white-ceramic-plate-vdx5hPQhXFk",
-  },
-  {
-    name: "Лимонный Лазурь",
-    description: "Лимон и бисквит!!!",
-    price: 20000,
-    pictureLink:
-      "https://unsplash.com/photos/a-three-tiered-cake-with-figs-on-top-of-it-4on47p0-bk4",
-  },
-  {
-    name: "Классический морковный",
-    description: "Полезный и сытный!!!",
-    price: 12000,
-    pictureLink:
-      "https://unsplash.com/photos/sliced-chocolate-cake-beside-fork-on-plate-P_l1bJQpQF0",
-  },
-  {
-    name: "Чернослив и апельсин",
-    description: "Какой-то текст",
-    price: 8000,
-    pictureLink:
-      "https://unsplash.com/photos/icing-covered-cake-beside-cupcakes-3962cSRPwOo",
-  },
-  // Add more cake options as needed
-];
 
 // User data store (simulating a simple personal cabinet)
 const userData = {};
@@ -55,230 +23,124 @@ const bot = new TelegramBot(token, { polling: true });
 
 // Command to start the bot
 
-bot.on("message", async (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
+// Function to generate random delivery status
+function generateRandomStatus() {
+  const statuses = [
+    "Статус: у курьера;\n Время доставки: 15 мин;\n Заказ: 154256",
+    "Статус: подготовка заказа;\n Время подготовки: 10 мин;n Заказ: 154257",
+    "Статус: готово к доставке;\n Ожидание: 10 мин;\n Заказ: 154258",
+  ];
 
-  if (text === "/start") {
-    await bot.sendMessage(chatId, "Ниже появится кнопка, заполни форму", {
-      reply_markup: {
-        keyboard: [
-          [{ text: "Заполнить форму", web_app: { url: webAppUrl + "/form" } }],
-        ],
-      },
-    });
-
-    await bot.sendMessage(
-      chatId,
-      "Заходи в наш интернет магазин по кнопке ниже",
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "Сделать заказ", web_app: { url: webAppUrl } }],
-          ],
-        },
-      }
-    );
-  }
-
-  if (msg?.web_app_data?.data) {
-    try {
-      const data = JSON.parse(msg?.web_app_data?.data);
-      console.log(data);
-      await bot.sendMessage(chatId, "Спасибо за обратную связь!");
-      await bot.sendMessage(chatId, "Ваша страна: " + data?.country);
-      await bot.sendMessage(chatId, "Ваша улица: " + data?.street);
-
-      setTimeout(async () => {
-        await bot.sendMessage(chatId, "Всю информацию вы получите в этом чате");
-      }, 3000);
-    } catch (e) {
-      console.log(e);
-    }
-  }
-});
-
-app.post("/web-data", async (req, res) => {
-  const { queryId, products = [], totalPrice } = req.body;
-  try {
-    await bot.answerWebAppQuery(queryId, {
-      type: "article",
-      id: queryId,
-      title: "Успешная покупка",
-      input_message_content: {
-        message_text: ` Поздравляю с покупкой, вы приобрели товар на сумму ${totalPrice}, ${products
-          .map((item) => item.title)
-          .join(", ")}`,
-      },
-    });
-    return res.status(200).json({});
-  } catch (e) {
-    return res.status(500).json({});
-  }
-});
-
-// Function to show user's orders
-function showMyOrders(chatId) {
-  const userOrders = userData[chatId].orders || [];
-
-  if (userOrders.length > 0) {
-    const orderText = userOrders.map((order, index) => {
-      return `${index + 1}. ${order.cake} - $${order.price}`;
-    });
-
-    bot.sendMessage(chatId, `Ваши заказы:\n${orderText.join("\n")}`);
-  } else {
-    bot.sendMessage(chatId, "У вас еще нету заказов.");
-  }
+  return statuses[Math.floor(Math.random() * statuses.length)];
 }
 
-// Function to suggest payment options
-function suggestPayment(chatId) {
-  bot.sendMessage(chatId, "Прошу выберите способ оплаты:", {
-    reply_markup: {
-      keyboard: [
-        ["💳 Через карту", "📱 Мобильный платеж"],
-        ["❌ Отменить оплату"],
-      ],
-      resize_keyboard: true,
-    },
+// Keyboard layout
+const keyboard = [
+  [{ text: "🍰 Меню", web_app: { url: webAppUrl } }],
+  [
+    { text: "🚚 Статус", callback_data: "status" },
+    { text: "🗄 Кабинет", web_app: { url: `${webAppUrl}/cabinet` } },
+  ],
+  [
+    { text: "📞 Контакты", callback_data: "contacts" },
+    { text: "ℹ О нас", callback_data: "about_us" },
+    { text: "🎁 Промо", web_app: { url: `${webAppUrl}/promo` } },
+  ],
+];
+
+// Contacts inline keyboard
+const contactsKeyboard = [
+  [
+    { text: "Телефон", callback_data: "tel" },
+    { text: "Instagram", url: "https://www.instagram.com/" },
+  ],
+  [
+    { text: "WhatsApp", url: "https://wa.link/ldvbeb" },
+    { text: "Telegram", url: "https://t.me/OrderCakeAlmatyBot" },
+  ],
+  [{ text: "⬅️ Назад", callback_data: "back_to_menu" }],
+];
+
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  const previewText = `
+  *Привет, готов к работе!*
+
+Нажмите "Меню" и выберите из ассортимента интересующий товар.
+
+Через бот вы можете проследить свой заказ, узнавать статус, время доставки. А также можете через личный кабинет посмотреть свои бонусы, скидки и историю заказов
+  
+`;
+  bot.sendMessage(chatId, previewText, {
+    parse_mode: "Markdown",
+    reply_markup: { inline_keyboard: keyboard },
   });
-}
+});
 
-// Handle order confirmation
-bot.on("message", (msg) => {
-  const chatId = msg.chat.id;
-  const messageText = msg.text;
+bot.on("callback_query", (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
 
-  switch (messageText) {
-    case "🛒 Заказать сейчас":
-      suggestPayment(chatId);
+  switch (data) {
+    case "status":
+      // Answer with a random delivery status
+      bot.sendMessage(chatId, generateRandomStatus());
       break;
-    case "❌ Отменить заказ":
-      cancelOrder(chatId);
+    case "contacts":
+      // Answer with contact options using an inline keyboard
+      bot.sendMessage(chatId, "Контакты:", {
+        reply_markup: { inline_keyboard: contactsKeyboard },
+      });
       break;
-    default:
-      // Handle other messages
+    case "about_us":
+      // Generate "About us" text and add the photo when you have it
+      const aboutUsText =
+        "Добро пожаловать в Dessert House! Мы — ведущая служба заказа тортов, призванная доставлять счастье в виде вкусных тортов. Наша команда опытных пекарей гарантирует, что каждый торт станет шедевром вкуса и дизайна. Заказывайте у нас и испытайте радость от вкуснейших тортов.";
+
+      // Add the photo when you have the actual link
+      bot.sendPhoto(
+        chatId,
+        "https://unsplash.com/photos/girl-baking-cookies-family-teenage-women-two-of-multi-ethnic-are-cooking-bread-bakery-in-the-kitchen-at-home-weekend-cooking-activity-for-young-people-lifestyles-concept-online-cooking-class-that-stay-at-home-s_a55p9ox-k",
+        { caption: aboutUsText }
+      );
       break;
+    case "tel":
+      bot.sendMessage(chatId, "Tel1: +77777777\n Tel2: +7 (7252) 752525");
+      break;
+    case "back_to_menu":
+      // Return to the main menu
+      bot.sendMessage(
+        chatId,
+        `Нажмите "Меню" и выберите из ассортимента интересующий товар.
+        
+Через бот вы можете проследить свой заказ, узнавать статус, время доставки. А также можете через личный кабинет посмотреть свои бонусы, скидки и историю заказов`,
+        {
+          reply_markup: { inline_keyboard: keyboard },
+        }
+      );
+      break;
+    // Add more cases for other buttons as needed
   }
 });
 
-// Handle payment selection
-bot.on("message", (msg) => {
-  const chatId = msg.chat.id;
-  const messageText = msg.text;
-
-  switch (messageText) {
-    case "💳 Через карту":
-    case "📱 Мобильный платеж":
-      processPayment(chatId, messageText);
-      break;
-    case "❌ Отменить оплату":
-      cancelPayment(chatId);
-      break;
-    default:
-      // Handle other messages
-      break;
-  }
-});
-
-// Function to confirm the order and initiate payment
-function confirmOrder(chatId) {
-  const selectedCake = userData[chatId].selectedCake;
-
-  // Simulate successful payment
-  const paymentSuccessful = Math.random() < 0.8; // 80% success rate
-
-  if (paymentSuccessful) {
-    // Save the order to user data
-    userData[chatId].orders = userData[chatId].orders || [];
-    userData[chatId].orders.push({
-      cake: selectedCake.name,
-      price: selectedCake.price,
-    });
-
-    // Send order details to the server API
-    axios
-      .post(serverApiUrl + "/orders", {
-        chatId,
-        orderDetails: `Торт/Пирог: ${selectedCake.name}\nЦена: $${selectedCake.price}`,
-      })
-      .then((response) => {
-        bot.sendMessage(
-          chatId,
-          "Ваш заказ был принят! Вы свяжемся с вами очень скоро.",
-          {
-            reply_markup: {
-              remove_keyboard: true, // Remove the custom keyboard
-            },
-          }
-        );
-      })
-      .catch((error) => {
-        bot.sendMessage(chatId, "Упс! Что-то пошло не так.");
-      });
-  } else {
-    bot.sendMessage(chatId, "Ошибка платежа. Пожалуйста, попробуйте еще раз.");
-  }
-
-  // Clear selected cake
-  userData[chatId].selectedCake = null;
-}
-
-// Function to process payment
-function processPayment(chatId, paymentOption) {
-  const selectedCake = userData[chatId].selectedCake;
-
-  // Simulate successful payment
-  const paymentSuccessful = Math.random() < 0.8; // 80% success rate
-
-  if (paymentSuccessful) {
-    // Save the order to user data
-    userData[chatId].orders = userData[chatId].orders || [];
-    userData[chatId].orders.push({
-      cake: selectedCake.name,
-      price: selectedCake.price,
-    });
-
-    // Send order details to the server API
-    axios
-      .post(serverApiUrl + "/orders", {
-        chatId,
-        orderDetails: `Торт/Пирог: ${selectedCake.name}\nЦена: $${selectedCake.price}\nPayment Option: ${paymentOption}`,
-      })
-      .then((response) => {
-        bot.sendMessage(
-          chatId,
-          "Ваш заказ был принят! Пожалуйста, ожидайте, мы с вами скоро свяжемся.",
-          {
-            reply_markup: {
-              remove_keyboard: true, // Remove the custom keyboard
-            },
-          }
-        );
-      })
-      .catch((error) => {
-        bot.sendMessage(chatId, "Упс! Что-то пошло не так..");
-      });
-  } else {
-    bot.sendMessage(chatId, "Ошибка платежа. Пожалуйста, попробуйте еще раз.");
-  }
-
-  // Clear selected cake
-  userData[chatId].selectedCake = null;
-}
-
-// Function to cancel the order
-function cancelOrder(chatId) {
-  userData[chatId].selectedCake = null;
-  bot.sendMessage(chatId, "Заказ отменен.");
-}
-
-// Function to cancel the payment
-function cancelPayment(chatId) {
-  userData[chatId].selectedCake = null;
-  bot.sendMessage(chatId, "Оплата отменена.");
-}
+// app.post("/web-data", async (req, res) => {
+//   const { queryId, products = [], totalPrice } = req.body;
+//   try {
+//     await bot.answerWebAppQuery(queryId, {
+//       type: "article",
+//       id: queryId,
+//       title: "Успешная покупка",
+//       input_message_content: {
+//         message_text: ` Поздравляю с покупкой, вы приобрели товар на сумму ${totalPrice}, ${products
+//           .map((item) => item.title)
+//           .join(", ")}`,
+//       },
+//     });
+//     return res.status(200).json({});
+//   } catch (e) {
+//     return res.status(500).json({});
+//   }
+// });
 
 const PORT = 8000;
 
