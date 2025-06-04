@@ -37,22 +37,22 @@ This project is a **Telegram bot prototype** developed in **JavaScript** using *
 ## 📦 Getting Started
 
 1. **Clone the repository:**
-   ```bash
+ ```bash
    git clone https://github.com/MuratOfficial/tel-bot.git
    cd tel-bot
   ```
 2. **Install dependencies:**
   ```bash
-  npm install
+    npm install
   ```
 3. **Configure environment variables:**
   Create a `.env` file in the root directory and add your Telegram bot token:
   ```env
-  TELEGRAM_BOT_TOKEN=your_bot_token_here
+    TELEGRAM_BOT_TOKEN=your_bot_token_here
   ```
 4. **Run the bot:**
   ```bash
-  node bot.js
+    node bot.js
   ```
   *The bot will start and connect to Telegram using long polling.*
 
